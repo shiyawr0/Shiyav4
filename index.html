@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Jaden Marion R. Angulo | Portfolio</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+.game-wrap {
+    max-width: 500px;
+    position: relative; /* Essential for overlay positioning */
+}
+
+.game-hud {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 8px;
+    font-family: var(--heading);
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: rgba(15,15,15,0.9);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-left: 4px solid var(--red);
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.game-overlay-btn {
+    display: block;
+    margin: 14px auto 0;
+    padding: 10px 30px;
+    background: rgba(217,4,41,0.1);
+    border: 1px solid var(--red);
+    color: var(--white);
+    font-family: var(--heading);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.game-tag:hover {
+    border-color: var(--red);
+    background: rgba(217,4,41,0.15);
+}
+
+#song-player {
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transition: max-height 0.4s ease, margin-top 0.4s ease;
+}
+
+#song-player.open {
+    max-height: 200px;
+    margin-top: 16px;
+}
+    
+:root {
+    --black: #050505;
+    --panel: #111111;
+
+    --red: #D90429;
+    --bright-red: #FF0033;
+
+    --white: #F7FAFC;
+    --gray: #A0AEC0;
+
+    --heading: 'Oswald', sans-serif;
+    --body: 'Montserrat', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    background: var(--black);
+    color: var(--gray);
+    font-family: var(--body);
+    overflow: hidden;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        transparent 1px,
+        transparent 4px
+    );
+    z-index: 999;
+}
+
+.app-background {
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(circle at 75% 50%, rgba(217, 4, 41, 0.15), transparent 35%),
+        radial-gradient(circle at 15% 85%, rgba(255, 0, 51, 0.08), transparent 30%),
+        linear-gradient(135deg, #050505, #151515 50%, #050505);
+    z-index: -5;
+}
+
+.app-background::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 46px 46px;
+    animation: gridMove 15s linear infinite;
+}
+
+@keyframes gridMove {
+    from { background-position: 0 0; }
+    to { background-position: 46px 46px; }
+}
+
+.glow-orb {
+    position: fixed;
+    width: 480px;
+    height: 480px;
+    right: -140px;
+    top: 30%;
+    transform: translateY(-50%);
+    background: var(--red);
+    filter: blur(170px);
+    opacity: 0.14;
+    z-index: -4;
+    animation: glowMove 6s ease-in-out infinite alternate;
+}
+
+@keyframes glowMove {
+    from { opacity: 0.09; transform: translateY(-50%) scale(0.9); }
+    to { opacity: 0.18; transform: translateY(-50%) scale(1.1); }
+}
+
+/* =====================================================
+   LOADING SCREEN
+===================================================== */
+#loading-screen {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #191919, #050505 70%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    transition: opacity 1s ease, visibility 1s ease;
+}
+
+#loading-screen.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loading-tag {
+    position: absolute;
+    top: 24px;
+    font-family: var(--heading);
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+}
+
+.radar-frame {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+.radar-frame::before,
+.radar-frame::after,
+.corner-tr,
+.corner-bl {
+    content: "";
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--red);
+}
+
+.radar-frame::before {
+    top: -12px;
+    left: -12px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.radar-frame::after {
+    bottom: -12px;
+    right: -12px;
+    border-left: none;
+    border-top: none;
+}
+
+.corner-tr {
+    top: -12px;
+    right: -12px;
+    border-left: none;
+    border-bottom: none;
+}
+
+.corner-bl {
+    bottom: -12px;
+    left: -12px;
+    border-right: none;
+    border-top: none;
+}
+
+.radar-circle {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    background:
+        repeating-radial-gradient(
+            circle at center,
+            transparent 0,
+            transparent 24px,
+            rgba(255,255,255,0.06) 25px
+        );
+}
+
+.radar-circle::before {
+    content: "";
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.radar-sweep {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 0deg,
+        rgba(217,4,41,0) 0deg,
+        rgba(217,4,41,0.55) 25deg,
+        rgba(217,4,41,0) 60deg
+    );
+    animation: sweep 2.2s linear infinite;
+}
+
+@keyframes sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.radar-crosshair::before,
+.radar-crosshair::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.1);
+}
+
+.radar-crosshair::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+}
+
+.radar-crosshair::after {
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-50%);
+}
+
+.radar-blip {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bright-red);
+    box-shadow: 0 0 10px var(--bright-red), 0 0 20px var(--red);
+    animation: blipPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes blipPulse {
+    0%, 100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+.radar-readout {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#load-percentage {
+    font-family: var(--heading);
+    font-size: 2rem;
+    color: var(--white);
+    text-shadow: 0 0 15px rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+}
+
+.radar-readout-label {
+    margin-top: 4px;
+    font-family: var(--heading);
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    color: var(--red);
+    text-transform: uppercase;
+}
+
+.loading-status-block {
+    text-align: center;
+    padding: 0 6%;
+}
+
+.loading-title {
+    font-family: var(--heading);
+    font-size: clamp(1.4rem, 6vw, 2.2rem);
+    color: var(--white);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.loading-title span {
+    color: var(--red);
+    text-shadow: 0 0 15px var(--red), 0 0 30px var(--red);
+}
+
+#load-status {
+    font-family: var(--heading);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray);
+}
+
+.loading-footer {
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 6%;
+    font-family: var(--heading);
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.3);
+}
+
+@media (max-width: 500px) {
+    .radar-frame { width: 170px; height: 170px; }
+    #load-percentage { font-size: 1.7rem; }
+    .loading-footer { display: none; }
+}
+
+/* =====================================================
+   APP LAYOUT
+===================================================== */
+#app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.view {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 70px 6% 30px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.view.active {
+    display: block;
+    animation: pageIn 0.4s ease;
+}
+
+@keyframes pageIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#main-menu.view.active {
+    display: flex;
+    align-items: center;
+}
+
+.menu-wrap {
+    width: 100%;
+}
+
+/* =====================================================
+   BACK BUTTON
+===================================================== */
+#back-btn {
+    position: fixed;
+    top: 22px;
+    left: 6%;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: var(--gray);
+    font-family: var(--heading);
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    z-index: 200;
+    transition: 0.2s;
+}
+
+#back-btn.visible {
+    display: flex;
+}
+
+#back-btn:hover {
+    color: white;
+}
+
+#back-btn::before {
+    content: "◄";
+    color: var(--red);
+    font-size: 0.8rem;
+}
+
+/* =====================================================
+   ANGULAR MENU
+===================================================== */
+.menu-tag {
+    font-family: var(--heading);
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.menu-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 68px;
+    cursor: pointer;
+    clip-path: polygon(0 0, 100% 0, 97% 100%, 0% 100%);
+    background: rgba(15,15,15,0.7);
+    border-left: 3px solid rgba(255,255,255,0.15);
+    margin-bottom: 12px;
+    transition: 0.25s ease;
+    overflow: hidden;
+    padding: 12px 16px 12px 0;
+    gap: 10px;
+}
+
+.menu-row::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--red);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+    z-index: 0;
+    opacity: 0.12;
+}
+
+.menu-row:active {
+    border-left-color: var(--red);
+}
+
+.menu-row:active::before {
+    transform: scaleX(1);
+}
+
+.menu-index {
+    position: relative;
+    z-index: 1;
+    font-family: var(--heading);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--red);
+    flex-shrink: 0;
+    padding-left: 18px;
+}
+
+.menu-label {
+    position: relative;
+    z-index: 1;
+    font-family: var(--heading);
+    font-size: clamp(1rem, 4.5vw, 1.4rem);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--white);
+    white-space: nowrap;
+}
+
+.menu-sub {
+    position: relative;
+    z-index: 1;
+    margin-left: auto;
+    text-align: right;
+    font-family: var(--heading);
+    font-size: clamp(0.5rem, 2vw, 0.6rem);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+@media (hover: hover) {
+    .menu-row:hover {
+        border-left-color: var(--red);
+    }
+    .menu-row:hover::before {
+        transform: scaleX(1);
+    }
+    .menu-row:hover .menu-sub {
+        color: rgba(255,255,255,0.7);
+    }
+}
+
+/* =====================================================
+   SECTION HEADER
+===================================================== */
+.panel-header {
+    font-family: var(--heading);
+    font-size: clamp(1.6rem, 8vw, 3rem);
+    color: white;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--red);
+    padding-bottom: 8px;
+    word-break: break-word;
+}
+
+/* =====================================================
+   DATA GRID (About / Other)
+===================================================== */
+.data-grid {
+    width: 100%;
+    max-width: 800px;
+    display: grid;
+    gap: 1.1rem;
+    padding: 1.4rem;
+    background: rgba(15,15,15,0.88);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-left: 4px solid var(--red);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    margin-bottom: 1.5rem;
+}
+
+.data-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.95rem;
+}
+
+.data-label {
+    color: var(--red);
+    font-family: var(--heading);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.data-value {
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+    word-break: break-word;
+}
+
+.games-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.game-tag {
+    padding: 5px 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+    font-family: var(--heading);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .game-tag:hover {
+        border-color: var(--red);
+        background: rgba(217,4,41,0.15);
+    }
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--heading);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 10px var(--red);
+    animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0.2; }
+}
+
+/* =====================================================
+   PROJECT / DETAIL ITEMS
+===================================================== */
+.project-list {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.project-item {
+    padding: 1.1rem 1.3rem;
+    background: rgba(15,15,15,0.88);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-left: 4px solid var(--red);
+}
+
+.project-name {
+    font-family: var(--heading);
+    font-size: 1.05rem;
+    color: white;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.project-desc {
+    font-size: 0.85rem;
+    color: var(--gray);
+    line-height: 1.5;
+}
+
+.attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.attachment-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+    color: var(--gray);
+    text-decoration: none;
+    font-family: var(--heading);
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* =====================================================
+   LEADERBOARD & GAME OVER UI
+===================================================== */
+#game-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 5, 0.90);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+
+.game-title {
+    font-family: var(--heading);
+    color: var(--white);
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+#player-name-input {
+    background: rgba(15,15,15,0.7);
+    border: 1px solid var(--red);
+    color: var(--white);
+    font-family: var(--heading);
+    padding: 8px 15px;
+    margin: 10px 0;
+    text-align: center;
+    outline: none;
+    width: 80%;
+    max-width: 200px;
+}
+
+#leaderboard-list {
+    list-style: none;
+    margin: 15px 0;
+    width: 80%;
+    max-width: 250px;
+}
+
+#leaderboard-list li {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--heading);
+    font-size: 0.85rem;
+    color: var(--gray);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 0;
+}
+
+#leaderboard-list li span:last-child {
+    color: var(--red);
+}
+</style>
+</head>
+
+<body>
+
+<div class="app-background"></div>
+<div class="glow-orb"></div>
+
+<!-- =====================================================
+     LOADING SCREEN
+===================================================== -->
+<div id="loading-screen">
+    <div class="loading-tag">ANGULO // PERSONAL OPERATIONS NETWORK</div>
+    <div class="radar-frame">
+        <div class="corner-tr"></div>
+        <div class="corner-bl"></div>
+        <div class="radar-circle"></div>
+        <div class="radar-crosshair"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-blip" style="top: 35%; left: 62%;"></div>
+        <div class="radar-blip" style="top: 68%; left: 40%; animation-delay: 0.6s;"></div>
+        <div class="radar-readout">
+            <div id="load-percentage">0%</div>
+            <div class="radar-readout-label">Scanning</div>
+        </div>
+    </div>
+    <div class="loading-status-block">
+        <div class="loading-title">
+            SYSTEM <span>ONLINE</span>
+        </div>
+        <div id="load-status">Initializing System</div>
+    </div>
+    <div class="loading-footer">
+        <span>AUTHORIZATION: VERIFIED</span>
+        <span>CONNECTION: SECURE</span>
+        <span>BUILD 2026</span>
+    </div>
+</div>
+
+<!-- =====================================================
+     BACK BUTTON
+===================================================== -->
+<div id="back-btn" onclick="goBack()">Back</div>
+
+<!-- =====================================================
+     APP
+===================================================== -->
+<main id="app-container">
+
+    <!-- MAIN MENU -->
+    <div id="main-menu" class="view active">
+        <div class="menu-wrap">
+            <div class="menu-tag">Angulo // Personal Operations Network</div>
+            <div class="menu-list">
+                <div class="menu-row" onclick="navigate('about-view')">
+                    <div class="menu-index">01</div>
+                    <div class="menu-label">About Me</div>
+                    <div class="menu-sub">Operator Profile</div>
+                </div>
+                <div class="menu-row" onclick="navigate('projects-view')">
+                    <div class="menu-index">02</div>
+                    <div class="menu-label">Projects</div>
+                    <div class="menu-sub">System Archives</div>
+                </div>
+                <div class="menu-row" onclick="navigate('other-view')">
+                    <div class="menu-index">03</div>
+                    <div class="menu-label">Other</div>
+                    <div class="menu-sub">Miscellaneous Data</div>
+                </div>
+                <div class="menu-row" onclick="navigate('game-view')">
+                    <div class="menu-index">04</div>
+                    <div class="menu-label">Combat Sim</div>
+                    <div class="menu-sub">Mini Game</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABOUT ME -->
+    <div id="about-view" class="view">
+        <h1 class="panel-header">Operator Data</h1>
+        <div class="data-grid">
+            <div class="data-row">
+                <div class="data-label">Designation</div>
+                <div class="data-value">Jaden Marion R. Angulo</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">Age</div>
+                <div class="data-value">17</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">Role</div>
+                <div class="data-value">Student / Aspiring Developer</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">University</div>
+                <div class="data-value">Polytechnic University of the Philippines</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">Interests</div>
+                <div class="games-list">
+                    <div class="game-tag">Valorant</div>
+                    <div class="game-tag">Call of Duty Mobile</div>
+                    <div class="game-tag">Apex Legends</div>
+                    <div class="game-tag">Cycling</div>
+                    <div class="game-tag">Drawing</div>
+                    <div class="game-tag">Playing Drums</div>
+                </div>
+            </div>
+            
+            <div class="data-row">
+                <div class="data-label">Bands I Listen To</div>
+                <div class="games-list">
+                    <div class="game-tag" onclick="playSong('48vr34351V9Sz1QVxmbYNf')">Pierce The Veil</div>
+                    <div class="game-tag" onclick="playSong('2T04xX1PyMkyPFKBYnlVl1')">Chase Atlantic</div>
+                    <div class="game-tag" onclick="playSong('6i0V12jOa3mr6uu4WYhUBr')">21 Pilots</div>
+                    <div class="game-tag" onclick="playSong('1yKAqZoi8xWGLCf5vajroL')">My Chemical Romance</div>
+                    <div class="game-tag" onclick="playSong('6WBkSZbGBaIWnEgnMoXEJU')">Sleeping With Sirens</div>
+                    <div class="game-tag" onclick="playSong('5pKCDm2fw4k6D6C5Rk646C')">Bullet For My Valentine</div>
+                    <div class="game-tag" onclick="playSong('61mWefnWQOLf90gepjOCb3')">Slipknot</div>
+                </div>
+                <div id="song-player"></div>
+            </div>
+
+            <div class="status">
+                <div class="status-dot"></div>
+                Status: Actively Learning
+            </div>
+        </div>
+    </div>
+
+    <!-- PROJECTS (category menu) -->
+    <div id="projects-view" class="view">
+        <h1 class="panel-header">System Archives</h1>
+        <div class="menu-list">
+            <div class="menu-row" onclick="navigate('projects-detail-view')">
+                <div class="menu-index">01</div>
+                <div class="menu-label">Projects</div>
+            </div>
+            <div class="menu-row" onclick="navigate('flowcharts-view')">
+                <div class="menu-index">02</div>
+                <div class="menu-label">Flowcharts</div>
+            </div>
+            <div class="menu-row" onclick="navigate('activities-view')">
+                <div class="menu-index">03</div>
+                <div class="menu-label">Activities</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROJECTS DETAIL -->
+    <div id="projects-detail-view" class="view">
+        <h1 class="panel-header">Projects</h1>
+        <div class="project-list">
+            <div class="project-item">
+                <div class="project-name">Project Name</div>
+                <div class="project-desc">Description goes here.</div>
+                <div class="attachments">
+                    <a class="attachment-item" href="files/report.pdf" target="_blank">Report.pdf</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOWCHARTS -->
+    <div id="flowcharts-view" class="view">
+        <h1 class="panel-header">Flowcharts</h1>
+        <div class="project-list">
+            <div class="project-item">
+                <div class="project-name">Flowchart Name Here</div>
+                <div class="project-desc">Description goes here.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIVITIES -->
+    <div id="activities-view" class="view">
+        <h1 class="panel-header">Activities</h1>
+        <div class="project-list">
+            <div class="project-item">
+                <div class="project-name">Activity Name Here</div>
+                <div class="project-desc">Description goes here.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTHER -->
+    <div id="other-view" class="view">
+        <h1 class="panel-header">Miscellaneous Data</h1>
+        <div class="data-grid">
+            <div class="data-row">
+                <div class="data-label">Email</div>
+                <div class="data-value">jaden.angulo@example.com</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">GitHub</div>
+                <div class="data-value">github.com/jadenangulo</div>
+            </div>
+            <div class="data-row">
+                <div class="data-label">Quote</div>
+                <div class="data-value">"Keep building, keep learning."</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME VIEW -->
+    <div id="game-view" class="view">
+        <h1 class="panel-header">Combat Sim</h1>
+        <div class="game-wrap">
+            <div class="game-hud">
+                <span id="hud-score">Score: 0</span>
+                <span id="hud-lives">Lives: 3</span>
+            </div>
+            <canvas id="game-canvas"></canvas>
+            <button class="game-overlay-btn" id="game-btn">Start Simulation</button>
+        </div>
+    </div>
+
+</main>
+
+
+<!-- =====================================================
+     SCRIPT
+===================================================== -->
+<script>
+    // --- LOADING SCREEN ---
+    const loadPercentage = document.getElementById('load-percentage');
+    const loadStatus = document.getElementById('load-status');
+    const loadingScreen = document.getElementById('loading-screen');
+
+    const statusMessages = [
+        { at: 0,   text: 'Initializing System' },
+        { at: 25,  text: 'Loading Operator Data' },
+        { at: 55,  text: 'Establishing Connection' },
+        { at: 80,  text: 'Rendering Interface' },
+        { at: 100, text: 'Ready' }
+    ];
+
+    let progress = 0;
+    const loadingInterval = setInterval(() => {
+        progress += Math.random() * 8 + 4;
+        if (progress >= 100) progress = 100;
+
+        loadPercentage.textContent = Math.floor(progress) + '%';
+        const current = [...statusMessages].reverse().find(step => progress >= step.at);
+        if (current) loadStatus.textContent = current.text;
+
+        if (progress >= 100) {
+            clearInterval(loadingInterval);
+            clearTimeout(failSafeTimer);
+            setTimeout(() => loadingScreen.classList.add('fade-out'), 400);
+        }
+    }, 150);
+
+    const failSafeTimer = setTimeout(() => {
+        clearInterval(loadingInterval);
+        loadingScreen.classList.add('fade-out');
+    }, 5000);
+
+
+    // --- NAVIGATION ---
+    let viewHistory = ['main-menu'];
+
+    function navigate(targetId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        const target = document.getElementById(targetId);
+        target.classList.add('active');
+        target.scrollTop = 0; // Fixes blank scroll states
+
+        viewHistory.push(targetId);
+        updateBackButton();
+        
+        if(targetId === 'game-view') {
+            setTimeout(resizeGame, 50); 
+        }
+    }
+
+    function goBack() {
+        if (viewHistory.length > 1) {
+            viewHistory.pop();
+            const previous = viewHistory[viewHistory.length - 1];
+
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const target = document.getElementById(previous);
+            target.classList.add('active');
+            target.scrollTop = 0;
+
+            updateBackButton();
+        }
+    }
+
+    function updateBackButton() {
+        const backBtn = document.getElementById('back-btn');
+        if (viewHistory[viewHistory.length - 1] === 'main-menu') {
+            backBtn.classList.remove('visible');
+        } else {
+            backBtn.classList.add('visible');
+        }
+    }
+
+
+    // --- SPOTIFY PLAYER ---
+    let currentTrack = null;
+    function playSong(trackId) {
+        const player = document.getElementById('song-player');
+
+        if (currentTrack === trackId) {
+            player.classList.remove('open');
+            currentTrack = null;
+            setTimeout(() => { player.innerHTML = ''; }, 400);
+            return;
+        }
+
+        currentTrack = trackId;
+        player.innerHTML = `<iframe style="border-radius:8px" src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&autoplay=1" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+
+        requestAnimationFrame(() => {
+            player.classList.add('open');
+        });
+    }
+
+    // --- GAME ENGINE ---
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('hud-score');
+    const livesEl = document.getElementById('hud-lives');
+    const gameBtn = document.getElementById('game-btn');
+    const gameWrap = document.querySelector('.game-wrap');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'game-overlay';
+    overlay.innerHTML = `
+        <div class="game-title" id="overlay-title">GAME OVER</div>
+        <input type="text" id="player-name-input" placeholder="ENTER INITIALS" maxlength="5" autocomplete="off" />
+        <button class="game-overlay-btn" id="save-score-btn">SAVE SCORE</button>
+        <ul id="leaderboard-list"></ul>
+        <button class="game-overlay-btn" id="restart-btn" style="margin-top: 10px;">PLAY AGAIN</button>
+    `;
+    gameWrap.appendChild(overlay);
+
+    const overlayTitle = document.getElementById('overlay-title');
+    const nameInput = document.getElementById('player-name-input');
+    const saveBtn = document.getElementById('save-score-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const leaderboardList = document.getElementById('leaderboard-list');
+
+    // Crash-Proof Assets
+    const assets = {
+        shipBase: new Image(),
+        shipUpgrade: new Image(),
+        projectile: new Image(),
+        enemies: [new Image(), new Image(), new Image()]
+    };
+    
+    assets.shipBase.src = '5557.gif';
+    assets.shipUpgrade.src = '5556.jpg';
+    assets.projectile.src = '5559.gif';
+    assets.enemies[0].src = '5560.jpg';
+    assets.enemies[1].src = '5561.gif';
+    assets.enemies[2].src = '5558.jpg';
+
+    let gW, gH;
+    let gameState = 'idle'; 
+    let player, bullets, enemies, score, lives, spawnTimer, fireTimer;
+    const UPGRADE_SCORE = 200; 
+
+    function resizeGame() {
+        if(!canvas || !canvas.parentElement) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if(rect.width === 0) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = (rect.width * (4/3)) * dpr;
+        
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.width * (4/3)}px`;
+        
+        ctx.scale(dpr, dpr);
+        gW = rect.width;
+        gH = rect.width * (4/3);
+    }
+    window.addEventListener('resize', resizeGame);
+
+    function initGame() {
+        resizeGame();
+        player = { 
+            x: gW / 2, 
+            y: gH - 40, 
+            width: 32, 
+            height: 32,
+            isUpgraded: false
+        };
+        bullets = [];
+        enemies = [];
+        score = 0;
+        lives = 3;
+        spawnTimer = 0;
+        fireTimer = 0;
+        
+        scoreEl.textContent = 'Score: 0';
+        livesEl.textContent = 'Lives: 3';
+        overlay.style.display = 'none';
+        nameInput.style.display = 'block';
+        saveBtn.style.display = 'block';
+        nameInput.value = '';
+    }
+
+    canvas.addEventListener('pointermove', (e) => {
+        if (gameState !== 'playing') return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = gW / rect.width; 
+        const x = (e.clientX - rect.left) * scaleX;
+        player.x = Math.max(player.width/2, Math.min(gW - player.width/2, x));
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (gameState !== 'playing') return;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const scaleX = gW / rect.width;
+        const x = (touch.clientX - rect.left) * scaleX;
+        player.x = Math.max(player.width/2, Math.min(gW - player.width/2, x));
+    }, { passive: false });
+
+    function drawSpriteSafe(img, x, y, w, h, fallbackColor) {
+        if (img.complete && img.naturalWidth > 0) {
+            ctx.drawImage(img, x, y, w, h);
+        } else {
+            ctx.fillStyle = fallbackColor;
+            ctx.fillRect(x, y, w, h);
+        }
+    }
+
+    function spawnEnemy() {
+        const size = 25 + Math.random() * 15;
+        const speedMult = 1 + (score * 0.005);
+        enemies.push({
+            x: size/2 + Math.random() * (gW - size),
+            y: -size,
+            w: size,
+            h: size,
+            speed: (1.5 + Math.random() * 1.5) * speedMult,
+            sprite: assets.enemies[Math.floor(Math.random() * assets.enemies.length)]
+        });
+    }
+
+    function gameLoop() {
+        if (gameState !== 'playing') return;
+
+        ctx.clearRect(0, 0, gW, gH);
+
+        if (score >= UPGRADE_SCORE && !player.isUpgraded) {
+            player.isUpgraded = true;
+            player.width = 44; 
+            player.height = 44;
+        }
+
+        let fireDelay = player.isUpgraded ? 8 : Math.max(12, 20 - (score * 0.02)); 
+        fireTimer++;
+        
+        if (fireTimer > fireDelay) {
+            bullets.push({ 
+                x: player.x - 6, 
+                y: player.y - player.height/2, 
+                w: 12, 
+                h: 12, 
+                speed: player.isUpgraded ? 10 : 7 
+            });
+            fireTimer = 0;
+        }
+
+        let spawnRate = Math.max(15, 60 - (score * 0.15));
+        spawnTimer++;
+        if (spawnTimer > spawnRate) {
+            spawnEnemy();
+            spawnTimer = 0;
+        }
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            b.y -= b.speed;
+            if (b.y < -20) { bullets.splice(i, 1); continue; }
+            drawSpriteSafe(assets.projectile, b.x, b.y, b.w, b.h, '#FFD700');
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let en = enemies[i];
+            en.y += en.speed;
+            
+            if (en.y > gH + en.h) { 
+                enemies.splice(i, 1); 
+                continue; 
+            }
+
+            for (let j = bullets.length - 1; j >= 0; j--) {
+                let b = bullets[j];
+                if (b.x < en.x + en.w/2 && b.x + b.w > en.x - en.w/2 &&
+                    b.y < en.y + en.h/2 && b.y + b.h > en.y - en.h/2) {
+                    enemies.splice(i, 1);
+                    bullets.splice(j, 1);
+                    score += 10;
+                    scoreEl.textContent = 'Score: ' + score;
+                    break;
+                }
+            }
+
+            if (gameState === 'playing' && enemies[i]) {
+                if (Math.abs(en.x - player.x) < (en.w/2 + player.width/4) && 
+                    Math.abs(en.y - player.y) < (en.h/2 + player.height/4)) {
+                    enemies.splice(i, 1);
+                    lives--;
+                    livesEl.textContent = 'Lives: ' + lives;
+                    if (lives <= 0) { endGame(); return; }
+                }
+            }
+            
+            if(enemies[i]) {
+                drawSpriteSafe(en.sprite, en.x - en.w/2, en.y - en.h/2, en.w, en.h, '#FF0033');
+            }
+        }
+
+        const currentShip = player.isUpgraded ? assets.shipUpgrade : assets.shipBase;
+        drawSpriteSafe(currentShip, player.x - player.width/2, player.y - player.height/2, player.width, player.height, '#F7FAFC');
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function getLeaderboard() {
+        const data = localStorage.getItem('combatSimScores');
+        return data ? JSON.parse(data) : [];
+    }
+
+    function saveToLeaderboard(name, newScore) {
+        let board = getLeaderboard();
+        board.push({ name: name.toUpperCase() || 'ANON', score: newScore });
+        board.sort((a, b) => b.score - a.score);
+        board = board.slice(0, 5); 
+        localStorage.setItem('combatSimScores', JSON.stringify(board));
+        return board;
+    }
+
+    function displayLeaderboard() {
+        const board = getLeaderboard();
+        leaderboardList.innerHTML = '';
+        board.forEach((entry, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${index + 1}. ${entry.name}</span> <span>${entry.score}</span>`;
+            leaderboardList.appendChild(li);
+        });
+    }
+
+    function endGame() {
+        gameState = 'over';
+        overlay.style.display = 'flex';
+        overlayTitle.textContent = `FINAL SCORE: ${score}`;
+        displayLeaderboard();
+    }
+
+    gameBtn.addEventListener('click', () => {
+        gameBtn.style.display = 'none';
+        initGame();
+        gameState = 'playing';
+        gameLoop();
+    });
+
+    restartBtn.addEventListener('click', () => {
+        initGame();
+        gameState = 'playing';
+        gameLoop();
+    });
+
+    saveBtn.addEventListener('click', () => {
+        if (gameState === 'over') {
+            saveToLeaderboard(nameInput.value, score);
+            nameInput.style.display = 'none';
+            saveBtn.style.display = 'none';
+            displayLeaderboard();
+        }
+    });
+</script>
+
+</body>
+</html>
